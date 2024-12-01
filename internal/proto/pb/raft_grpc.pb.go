@@ -19,8 +19,8 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Raft_RequestVote_FullMethodName   = "/raft.Raft/requestVote"
-	Raft_AppendEntries_FullMethodName = "/raft.Raft/appendEntries"
+	Raft_RequestVote_FullMethodName   = "/raft.Raft/RequestVote"
+	Raft_AppendEntries_FullMethodName = "/raft.Raft/AppendEntries"
 )
 
 // RaftClient is the client API for Raft service.
@@ -133,11 +133,11 @@ var Raft_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*RaftServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "requestVote",
+			MethodName: "RequestVote",
 			Handler:    _Raft_RequestVote_Handler,
 		},
 		{
-			MethodName: "appendEntries",
+			MethodName: "AppendEntries",
 			Handler:    _Raft_AppendEntries_Handler,
 		},
 	},

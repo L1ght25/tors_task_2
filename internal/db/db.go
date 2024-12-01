@@ -1,8 +1,8 @@
 package db
 
 import (
+	"fmt"
 	"log/slog"
-	"strings"
 	"sync"
 )
 
@@ -12,53 +12,48 @@ func Get(key any) (any, bool) {
 	return kv.Load(key)
 }
 
-func isValidCommand(parsedCommand []string, size int) bool {
-	if len(parsedCommand) != size {
-		slog.Error("Invalid command", "command", parsedCommand)
-		return false
-	}
-	return true
-}
-
-func Put(command string) bool {
-	parsedCommand := strings.Split(command, " ")
-	if len(command) == 0 || len(parsedCommand) == 0 {
+func ProcessWrite(command, key string, value, oldValue *string) (bool, error) {
+	if len(command) == 0 {
 		slog.Error("Invalid command", "command", command)
-		return false
+		return false, fmt.Errorf("Empty command")
 	}
 
-	switch parsedCommand[0] {
+	switch command {
 	case "CREATE":
-		if !isValidCommand(parsedCommand, 3) {
-			break
+		if value == nil {
+			slog.Error("Null value", "key", key)
+			return false, fmt.Errorf("Null value")
 		}
-		key := parsedCommand[1]
-		value := parsedCommand[2]
-		kv.Store(key, value)
+		if _, exists := kv.Load(key); exists {
+			return false, fmt.Errorf("already exists")
+		}
+		kv.Store(key, *value)
 	case "DELETE":
-		if !isValidCommand(parsedCommand, 2) {
-			break
-		}
-		key := parsedCommand[1]
-		kv.Delete(key)
+		_, existed := kv.LoadAndDelete(key)
+		return existed, nil
 	case "UPDATE":
-		if !isValidCommand(parsedCommand, 3) {
-			break
+		if value == nil {
+			slog.Error("Null value", "key", key)
 		}
-		key := parsedCommand[1]
-		value := parsedCommand[2]
-		kv.Store(key, value)
+		_, exists := kv.Load(key)
+		if !exists {
+			return false, nil
+		}
+		kv.Store(key, *value)
 	case "CAS":
-		if !isValidCommand(parsedCommand, 4) {
-			break
+		if value == nil {
+			slog.Error("Null new value", "key", key)
+			return false, fmt.Errorf("Null new value")
 		}
-		key := parsedCommand[1]
-		oldValue := parsedCommand[2]
-		newValue := parsedCommand[3]
-		return kv.CompareAndSwap(key, oldValue, newValue)
+		if oldValue == nil {
+			slog.Error("Null old value", "key", key)
+			return false, fmt.Errorf("Null old value")
+		}
+		return kv.CompareAndSwap(key, *oldValue, *value), nil
 	default:
 		slog.Error("Invalid command: expected CREATE/DELETE/UPDATE/CAS", "command", command)
+		return false, fmt.Errorf("Invalid command: expected CREATE/DELETE/UPDATE/CAS, got %v", command)
 	}
 
-	return true
+	return true, nil
 }

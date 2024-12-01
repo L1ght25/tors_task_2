@@ -15,9 +15,11 @@ import (
 )
 
 type LogEntry struct {
-	Term        int64
-	CommandName string
-	Command     string
+	Term     int64
+	Command  string
+	Key      string
+	Value    *string
+	OldValue *string
 }
 
 type RaftServer struct {
@@ -106,7 +108,13 @@ func (s *RaftServer) appendEntries(req *pb.AppendEntriesRequest) {
 			}
 		}
 
-		s.log = append(s.log, LogEntry{Term: entry.Term, CommandName: entry.CommandName, Command: string(entry.Command)})
+		s.log = append(s.log, LogEntry{
+			Term:     entry.Term,
+			Command:  entry.Command,
+			Key:      entry.Key,
+			Value:    entry.Value,
+			OldValue: entry.OldValue,
+		})
 	}
 }
 
@@ -132,28 +140,24 @@ func (s *RaftServer) AppendEntries(ctx context.Context, req *pb.AppendEntriesReq
 	s.appendEntries(req)
 
 	if req.LeaderCommit > s.commitIndex {
-		s.applyEntriesLocked(req.LeaderCommit)
+		s.applyEntries(req.LeaderCommit)
 	}
 
 	return &pb.AppendEntriesResponse{Term: s.currentTerm, Success: true}, nil
 }
 
-func (s *RaftServer) applyEntriesLocked(leaderCommit int64) {
+// [start, end]
+func (s *RaftServer) applyEntries(leaderCommit int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.applyEntries(leaderCommit)
-}
-
-// [start, end]
-func (s *RaftServer) applyEntries(leaderCommit int64) {
 	for i := s.commitIndex; i <= leaderCommit; i++ {
 		entry := s.log[i]
 		if entry.Command == "init" {
 			continue
 		}
 		slog.Info("applying entry", "node", s.id, "entry", entry)
-		db.Put(entry.Command)
+		db.ProcessWrite(entry.Command, entry.Key, entry.Value, entry.OldValue)
 	}
 
 	s.commitIndex = leaderCommit

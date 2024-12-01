@@ -13,6 +13,6 @@ func NewReplicator(raftServer *raft.RaftServer) *Replicator {
 	}
 }
 
-func (r *Replicator) ApplyAndReplicate(command string) error {
-	return r.raftServer.ReplicateLogEntry(command)
+func (r *Replicator) ApplyAndReplicate(command string, key string, value, oldValue *string) (bool, error) {
+	return r.raftServer.ReplicateLogEntry(command, key, value, oldValue)
 }

@@ -37,10 +37,11 @@ func main() {
 	raftServer := raft.NewRaftServer(id, peers)
 	httpServer := httpserver.NewServer(raftServer)
 
-	http.HandleFunc("/put", httpServer.PutHandler)
 	http.HandleFunc("/get/{key}", httpServer.GetHandler)
-	// http.HandleFunc("/delete", server.DeleteHandler)
-	// http.HandleFunc("/cas", server.CompareAndSwapHandler)
+	http.HandleFunc("/create", httpServer.CreateHandler)
+	http.HandleFunc("/delete", httpServer.DeleteHandler)
+	http.HandleFunc("/update", httpServer.UpdateHandler)
+	http.HandleFunc("/cas", httpServer.CompareAndSwapHandler)
 
 	go raftServer.StartRaftServer(fmt.Sprintf(":%d", raftPort))
 

@@ -3,16 +3,17 @@ package raft
 import (
 	"fmt"
 	"log/slog"
+	"raftdb/internal/db"
 	"raftdb/internal/proto/pb"
 )
 
-func (s *RaftServer) ReplicateLogEntry(command string) error {
+func (s *RaftServer) ReplicateLogEntry(command, key string, value, oldValue *string) (bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if s.state != LEADER {
 		slog.Error("WTF, replicate in replica", "leader", s.leaderID, "node", s.id)
-		return fmt.Errorf("cannot handle write on replica. LeaderID: %v", s.leaderID)
+		return false, fmt.Errorf("cannot handle write on replica. LeaderID: %v", s.leaderID)
 	}
 
 	var prevLogIndex int64
@@ -23,8 +24,11 @@ func (s *RaftServer) ReplicateLogEntry(command string) error {
 		prevLogTerm = s.log[prevLogIndex].Term
 	}
 	entry := LogEntry{
-		Term:    s.currentTerm,
-		Command: command,
+		Term:     s.currentTerm,
+		Command:  command,
+		Key:      key,
+		Value:    value,
+		OldValue: oldValue,
 	}
 
 	s.log = append(s.log, entry)
@@ -40,8 +44,11 @@ func (s *RaftServer) ReplicateLogEntry(command string) error {
 				PrevLogTerm:  prevLogTerm,
 				Entries: []*pb.LogEntry{
 					{
-						Term:    entry.Term,
-						Command: []byte(entry.Command),
+						Term:     entry.Term,
+						Command:  entry.Command,
+						Key:      entry.Key,
+						Value:    entry.Value,
+						OldValue: entry.OldValue,
 					},
 				},
 				LeaderCommit: s.commitIndex,
@@ -72,9 +79,10 @@ func (s *RaftServer) ReplicateLogEntry(command string) error {
 
 	if ackCount > len(s.peers)/2 {
 		slog.Info("Successfully replicated entry, applying...", "leader", s.id, "entry", entry)
-		s.applyEntries(int64(len(s.log) - 1))
-		return nil
+		success, err := db.ProcessWrite(entry.Command, entry.Key, entry.Value, entry.OldValue)
+		s.commitIndex = int64(len(s.log) - 1)
+		return success, err
 	}
 
-	return fmt.Errorf("cannot replicate entry %+v", entry)
+	return false, fmt.Errorf("cannot replicate entry %+v", entry)
 }
