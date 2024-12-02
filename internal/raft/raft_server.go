@@ -33,6 +33,7 @@ type RaftServer struct {
 	state       int // leader, follower, candidate
 	leaderID    int64
 	commitIndex int64
+	nextIndex   map[string]int64
 
 	electionTimeout time.Duration
 	electionTimer   *time.Timer
@@ -59,6 +60,7 @@ func NewRaftServer(id int64, peers []string) *RaftServer {
 		state:       FOLLOWER,
 		leaderID:    -1,
 		commitIndex: 0,
+		nextIndex:   make(map[string]int64),
 
 		electionTimeout:  time.Second * time.Duration(15+id*5),
 		heartbeatTimeout: time.Second * 5,

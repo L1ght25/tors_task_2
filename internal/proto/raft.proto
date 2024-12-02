@@ -5,7 +5,6 @@ package raft;
 option go_package = "pb/";
 
 message LogEntry {
-    int64 Index = 1;
 	int64 Term = 2;
 	string Command = 3;
 	string Key = 4;

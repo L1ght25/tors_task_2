@@ -57,6 +57,9 @@ func (s *RaftServer) ReplicateLogEntry(command, key string, value, oldValue *str
 			resp, err := sendAppendEntries(peer, req)
 			if err == nil && resp.Success {
 				ackCh <- true
+				s.mu.Lock()
+				s.nextIndex[peer]++
+				s.mu.Unlock()
 			} else {
 				if err != nil {
 					slog.Error("Append new entry error", "leader", s.id, "error", err)
