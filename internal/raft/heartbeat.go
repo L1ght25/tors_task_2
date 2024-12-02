@@ -55,6 +55,10 @@ func (s *RaftServer) sendHeartbeats() {
 					return
 				}
 
+				if nextIndex == 0 {
+					break
+				}
+
 				s.mu.Lock()
 				if resp.Success {
 					s.nextIndex[peer] = nextIndex + int64(len(entries))

@@ -33,6 +33,7 @@ func (s *RaftServer) beginElection() {
 			if err == nil && response.VoteGranted {
 				s.mu.Lock()
 				defer s.mu.Unlock()
+				slog.Info("Vote granted!", "node", s.id, "votes", votes)
 				votes++
 				if votes > len(s.peers)/2 && s.state == CANDIDATE {
 					s.becomeLeader()

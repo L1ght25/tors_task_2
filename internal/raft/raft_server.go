@@ -62,7 +62,7 @@ func NewRaftServer(id int64, peers []string) *RaftServer {
 		commitIndex: 0,
 		nextIndex:   make(map[string]int64),
 
-		electionTimeout:  time.Second * time.Duration(15+id*5),
+		electionTimeout:  time.Second * time.Duration(8+id*5),
 		heartbeatTimeout: time.Second * 5,
 
 		peers: peers,
@@ -82,15 +82,15 @@ func (s *RaftServer) Tick(timer *time.Timer, timeout time.Duration, callback fun
 }
 
 func (s *RaftServer) RequestVote(ctx context.Context, req *pb.VoteRequest) (*pb.VoteResponse, error) {
-	slog.Info("RequestVote received", "node", s.id, "candidate", req.CandidateID)
+	slog.Info("RequestVote received", "node", s.id, "candidate", req.CandidateID, "request_term", req.Term, "current_term", s.currentTerm)
 
 	if req.Term < s.currentTerm {
 		return &pb.VoteResponse{Term: s.currentTerm, VoteGranted: false}, nil
 	}
 
-	if s.lastVotedFor == -1 || s.lastVotedFor == int64(req.CandidateID) {
-		s.lastVotedFor = req.CandidateID
+	if s.lastVotedFor == -1 || req.Term > s.currentTerm || s.lastVotedFor == int64(req.CandidateID) {
 		s.currentTerm = req.Term
+		s.lastVotedFor = req.CandidateID
 		return &pb.VoteResponse{Term: s.currentTerm, VoteGranted: true}, nil
 	}
 
@@ -128,6 +128,7 @@ func (s *RaftServer) AppendEntries(ctx context.Context, req *pb.AppendEntriesReq
 	}
 
 	s.currentTerm = req.Term
+	s.lastVotedFor = -1
 	s.state = FOLLOWER
 	s.leaderID = req.LeaderID
 	s.electionTimer = s.Tick(s.electionTimer, s.electionTimeout, s.beginElection)
@@ -165,7 +166,6 @@ func (s *RaftServer) applyEntries(leaderCommit int64) {
 	s.commitIndex = leaderCommit
 }
 
-// Запуск gRPC-сервера
 func (s *RaftServer) StartRaftServer(port string) {
 	lis, err := net.Listen("tcp", port)
 	if err != nil {
@@ -179,4 +179,24 @@ func (s *RaftServer) StartRaftServer(port string) {
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}
+}
+
+func (s *RaftServer) GetLeaderID() int64 {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.leaderID
+}
+
+func (s *RaftServer) ResetTimeouts() {
+	s.electionTimer.Stop()
+	s.heartbeatTimer.Stop()
+}
+
+func (s *RaftServer) StartTimeouts() {
+	s.electionTimer = s.Tick(s.electionTimer, s.electionTimeout, s.beginElection)
+	s.heartbeatTimer = s.Tick(s.heartbeatTimer, s.heartbeatTimeout, s.sendHeartbeats)
+}
+
+func (s *RaftServer) LogLength() int {
+	return len(s.log)
 }
