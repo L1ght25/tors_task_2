@@ -49,7 +49,7 @@ func (s *RaftServer) becomeLeader() {
 	s.state = LEADER
 	s.leaderID = s.id
 
-	s.heartbeatTimer = s.Tick(s.heartbeatTimer, s.heartbeatTimeout, s.sendHeartbeats)
+	go s.sendHeartbeats()
 
 	if s.electionTimer != nil {
 		s.electionTimer.Stop()

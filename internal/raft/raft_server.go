@@ -91,6 +91,7 @@ func (s *RaftServer) RequestVote(ctx context.Context, req *pb.VoteRequest) (*pb.
 	if s.lastVotedFor == -1 || req.Term > s.currentTerm || s.lastVotedFor == int64(req.CandidateID) {
 		s.currentTerm = req.Term
 		s.lastVotedFor = req.CandidateID
+		s.electionTimer = s.Tick(s.electionTimer, s.electionTimeout, s.beginElection)
 		return &pb.VoteResponse{Term: s.currentTerm, VoteGranted: true}, nil
 	}
 
