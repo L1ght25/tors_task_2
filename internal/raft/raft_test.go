@@ -177,3 +177,24 @@ func TestLogSync(t *testing.T) {
 	time.Sleep(5 * time.Second)
 	assert.Equal(t, 4, cluster[1].raftServer.LogLength())
 }
+
+func TestMasterCommit(t *testing.T) {
+	slog.SetDefault(slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level: slog.LevelInfo,
+		}),
+	))
+
+	cluster := NewTestCluster(5)
+	time.Sleep(10 * time.Second)
+	cluster[0].raftServer.SetMagicString("test_leader_commit")
+
+	value := "2"
+	_, err := cluster[0].raftServer.ReplicateLogEntry("CREATE", "1", &value, nil)
+	assert.NoError(t, err)
+
+	time.Sleep(10 * time.Second)
+	for id := 0; id < 5; id++ {
+		assert.Equal(t, int64(1), cluster[id].raftServer.GetCommitIndex())
+	}
+}

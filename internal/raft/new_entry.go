@@ -80,6 +80,11 @@ func (s *RaftServer) ReplicateLogEntry(command, key string, value, oldValue *str
 		}
 	}
 
+	if s.magicString == "test_leader_commit" {
+		slog.Info("!!! Down master before commit index")
+		return true, nil
+	}
+
 	if ackCount > len(s.peers)/2 {
 		slog.Info("Successfully replicated entry, applying...", "leader", s.id, "entry", entry)
 		success, err := db.ProcessWrite(entry.Command, entry.Key, entry.Value, entry.OldValue)

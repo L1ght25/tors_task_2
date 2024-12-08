@@ -2,6 +2,7 @@ package raft
 
 import (
 	"log/slog"
+	"raftdb/internal/db"
 	"raftdb/internal/proto/pb"
 )
 
@@ -62,6 +63,21 @@ func (s *RaftServer) sendHeartbeats() {
 				s.mu.Lock()
 				if resp.Success {
 					s.nextIndex[peer] = nextIndex + int64(len(entries))
+
+					// check if we need to commit entry from log
+					count := 0
+					for _, nextInd := range s.nextIndex {
+						if s.commitIndex+1 < nextInd {
+							count++
+						}
+					}
+					if count > len(s.peers)/2 {
+						slog.Info("There is uncommited entry in log, commiting...", "leader", s.id, "index", s.commitIndex)
+						s.commitIndex++
+						entry := s.log[s.commitIndex]
+						db.ProcessWrite(entry.Command, entry.Key, entry.Value, entry.OldValue)
+					}
+
 					s.mu.Unlock()
 					break
 				}

@@ -43,6 +43,9 @@ type RaftServer struct {
 
 	peers []string
 	mu    sync.Mutex
+
+	// test stuff
+	magicString string
 }
 
 func NewRaftServer(id int64, peers []string) *RaftServer {
@@ -200,4 +203,12 @@ func (s *RaftServer) StartTimeouts() {
 
 func (s *RaftServer) LogLength() int {
 	return len(s.log)
+}
+
+func (s *RaftServer) GetCommitIndex() int64 {
+	return s.commitIndex
+}
+
+func (s *RaftServer) SetMagicString(newMagicString string) {
+	s.magicString = newMagicString
 }
