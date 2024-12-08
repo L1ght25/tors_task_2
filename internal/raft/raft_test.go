@@ -218,3 +218,26 @@ func TestConsistentRead(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(1), cluster[1].raftServer.GetCommitIndex())
 }
+
+func TestRequestVote(t *testing.T) {
+	slog.SetDefault(slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level: slog.LevelInfo,
+		}),
+	))
+
+	cluster := NewTestCluster(5)
+	time.Sleep(10 * time.Second)
+	StopTestServer(cluster[1])
+
+	value := "2"
+	_, err := cluster[0].raftServer.ReplicateLogEntry("CREATE", "1", &value, nil)
+	assert.NoError(t, err)
+
+	time.Sleep(5 * time.Second)
+	StartTestServer(cluster[1])
+	cluster[1].raftServer.SetMagicString("test_election")
+	time.Sleep(5 * time.Second)
+
+	assert.Equal(t, int64(0), cluster[0].raftServer.GetLeaderID())
+}

@@ -85,23 +85,6 @@ func (s *RaftServer) Tick(timer *time.Timer, timeout time.Duration, callback fun
 	return time.AfterFunc(timeout, callback)
 }
 
-func (s *RaftServer) RequestVote(ctx context.Context, req *pb.VoteRequest) (*pb.VoteResponse, error) {
-	slog.Info("RequestVote received", "node", s.id, "candidate", req.CandidateID, "request_term", req.Term, "current_term", s.currentTerm)
-
-	if req.Term < s.currentTerm {
-		return &pb.VoteResponse{Term: s.currentTerm, VoteGranted: false}, nil
-	}
-
-	if s.lastVotedFor == -1 || req.Term > s.currentTerm || s.lastVotedFor == int64(req.CandidateID) {
-		s.currentTerm = req.Term
-		s.lastVotedFor = req.CandidateID
-		s.electionTimer = s.Tick(s.electionTimer, s.electionTimeout, s.beginElection)
-		return &pb.VoteResponse{Term: s.currentTerm, VoteGranted: true}, nil
-	}
-
-	return &pb.VoteResponse{Term: s.currentTerm, VoteGranted: false}, nil
-}
-
 func (s *RaftServer) appendEntries(req *pb.AppendEntriesRequest) {
 	for i, entry := range req.Entries {
 		logIndex := req.PrevLogIndex + int64(i) + 1
@@ -245,4 +228,8 @@ func (s *RaftServer) GetCommitIndex() int64 {
 
 func (s *RaftServer) SetMagicString(newMagicString string) {
 	s.magicString = newMagicString
+
+	if s.magicString == "test_election" {
+		s.beginElection()
+	}
 }
