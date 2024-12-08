@@ -38,7 +38,16 @@ message VoteResponse {
     bool VoteGranted = 2;
 };
 
+message ReadIndexRequest {
+    int64 ReplicaID = 1;
+};
+
+message ReadIndexResponse {
+    int64 ReadIndex = 1;
+};
+
 service Raft {
     rpc RequestVote (VoteRequest) returns (VoteResponse);
     rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesResponse);
+    rpc ReadIndex (ReadIndexRequest) returns (ReadIndexResponse);
 }

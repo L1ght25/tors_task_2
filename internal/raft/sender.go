@@ -37,3 +37,17 @@ func sendAppendEntries(address string, request *pb.AppendEntriesRequest) (*pb.Ap
 
 	return client.AppendEntries(ctx, request)
 }
+
+func sendReadIndex(address string, request *pb.ReadIndexRequest) (*pb.ReadIndexResponse, error) {
+	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	client := pb.NewRaftClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	return client.ReadIndex(ctx, request)
+}

@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion7
 const (
 	Raft_RequestVote_FullMethodName   = "/raft.Raft/RequestVote"
 	Raft_AppendEntries_FullMethodName = "/raft.Raft/AppendEntries"
+	Raft_ReadIndex_FullMethodName     = "/raft.Raft/ReadIndex"
 )
 
 // RaftClient is the client API for Raft service.
@@ -29,6 +30,7 @@ const (
 type RaftClient interface {
 	RequestVote(ctx context.Context, in *VoteRequest, opts ...grpc.CallOption) (*VoteResponse, error)
 	AppendEntries(ctx context.Context, in *AppendEntriesRequest, opts ...grpc.CallOption) (*AppendEntriesResponse, error)
+	ReadIndex(ctx context.Context, in *ReadIndexRequest, opts ...grpc.CallOption) (*ReadIndexResponse, error)
 }
 
 type raftClient struct {
@@ -57,12 +59,22 @@ func (c *raftClient) AppendEntries(ctx context.Context, in *AppendEntriesRequest
 	return out, nil
 }
 
+func (c *raftClient) ReadIndex(ctx context.Context, in *ReadIndexRequest, opts ...grpc.CallOption) (*ReadIndexResponse, error) {
+	out := new(ReadIndexResponse)
+	err := c.cc.Invoke(ctx, Raft_ReadIndex_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // RaftServer is the server API for Raft service.
 // All implementations must embed UnimplementedRaftServer
 // for forward compatibility
 type RaftServer interface {
 	RequestVote(context.Context, *VoteRequest) (*VoteResponse, error)
 	AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error)
+	ReadIndex(context.Context, *ReadIndexRequest) (*ReadIndexResponse, error)
 	mustEmbedUnimplementedRaftServer()
 }
 
@@ -75,6 +87,9 @@ func (UnimplementedRaftServer) RequestVote(context.Context, *VoteRequest) (*Vote
 }
 func (UnimplementedRaftServer) AppendEntries(context.Context, *AppendEntriesRequest) (*AppendEntriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AppendEntries not implemented")
+}
+func (UnimplementedRaftServer) ReadIndex(context.Context, *ReadIndexRequest) (*ReadIndexResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReadIndex not implemented")
 }
 func (UnimplementedRaftServer) mustEmbedUnimplementedRaftServer() {}
 
@@ -125,6 +140,24 @@ func _Raft_AppendEntries_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Raft_ReadIndex_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadIndexRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RaftServer).ReadIndex(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Raft_ReadIndex_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RaftServer).ReadIndex(ctx, req.(*ReadIndexRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Raft_ServiceDesc is the grpc.ServiceDesc for Raft service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -139,6 +172,10 @@ var Raft_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AppendEntries",
 			Handler:    _Raft_AppendEntries_Handler,
+		},
+		{
+			MethodName: "ReadIndex",
+			Handler:    _Raft_ReadIndex_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

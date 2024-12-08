@@ -198,3 +198,23 @@ func TestMasterCommit(t *testing.T) {
 		assert.Equal(t, int64(1), cluster[id].raftServer.GetCommitIndex())
 	}
 }
+
+func TestConsistentRead(t *testing.T) {
+	slog.SetDefault(slog.New(
+		tint.NewHandler(os.Stderr, &tint.Options{
+			Level: slog.LevelInfo,
+		}),
+	))
+
+	cluster := NewTestCluster(5)
+	time.Sleep(10 * time.Second)
+
+	value := "2"
+	_, err := cluster[0].raftServer.ReplicateLogEntry("CREATE", "1", &value, nil)
+	assert.NoError(t, err)
+
+	assert.Equal(t, int64(0), cluster[1].raftServer.GetCommitIndex())
+	err = cluster[1].raftServer.WaitForRead()
+	assert.NoError(t, err)
+	assert.Equal(t, int64(1), cluster[1].raftServer.GetCommitIndex())
+}

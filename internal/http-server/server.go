@@ -26,6 +26,14 @@ func (s *Server) GetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Query().Get("consistent") == "true" {
+		err := s.replicator.WaitForRead()
+		if err != nil {
+			http.Error(w, fmt.Errorf("Error while waiting for consistent read: %w", err).Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+
 	if value, ok := db.Get(key); ok {
 		w.Write([]byte(fmt.Sprintf("%v", value)))
 	} else {

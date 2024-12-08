@@ -2,6 +2,7 @@ package raft
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net"
 	"raftdb/internal/db"
@@ -66,7 +67,7 @@ func NewRaftServer(id int64, peers []string) *RaftServer {
 		nextIndex:   make(map[string]int64),
 
 		electionTimeout:  time.Second * time.Duration(8+id*5),
-		heartbeatTimeout: time.Second * 5,
+		heartbeatTimeout: time.Second * 3,
 
 		peers: peers,
 	}
@@ -151,6 +152,39 @@ func (s *RaftServer) AppendEntries(ctx context.Context, req *pb.AppendEntriesReq
 	}
 
 	return &pb.AppendEntriesResponse{Term: s.currentTerm, Success: true}, nil
+}
+
+func (s *RaftServer) ReadIndex(ctx context.Context, req *pb.ReadIndexRequest) (*pb.ReadIndexResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.leaderID != s.id {
+		return nil, fmt.Errorf("cannot get read index from non-leader node")
+	}
+
+	return &pb.ReadIndexResponse{ReadIndex: s.commitIndex}, nil
+}
+
+func (s *RaftServer) WaitForRead() error {
+	s.mu.Lock()
+	readIndexResp, err := sendReadIndex(s.peers[s.leaderID], &pb.ReadIndexRequest{ReplicaID: s.id})
+	s.mu.Unlock()
+
+	if err != nil {
+		return err
+	}
+	readIndex := readIndexResp.ReadIndex
+	slog.Info("Got read index", "current_commit_index", s.commitIndex, "read_index", readIndex)
+
+	for {
+		s.mu.Lock()
+		if s.commitIndex >= readIndex {
+			s.mu.Unlock()
+			return nil
+		}
+		s.mu.Unlock()
+		time.Sleep(3 * time.Second)
+	}
 }
 
 // [start, end]

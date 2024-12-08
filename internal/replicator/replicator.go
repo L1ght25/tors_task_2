@@ -16,3 +16,7 @@ func NewReplicator(raftServer *raft.RaftServer) *Replicator {
 func (r *Replicator) ApplyAndReplicate(command string, key string, value, oldValue *string) (bool, error) {
 	return r.raftServer.ReplicateLogEntry(command, key, value, oldValue)
 }
+
+func (r *Replicator) WaitForRead() error {
+	return r.raftServer.WaitForRead()
+}
